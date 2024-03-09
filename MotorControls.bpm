@@ -1,0 +1,87 @@
+number S_kp
+
+number ACC_minPwr
+number ACC_maxPwr
+number ACC_isNeg
+number ACC_decelDist
+number ACC_accelDist
+number ACC_totalDist
+number pwr
+
+number Inv1
+number Inv2
+
+number grad
+
+
+Function SyncAccConfig(in number kP, in number minPwr, in number maxPwr,in number accelDist, in number decelDist, in number totalDist, in number inverse1, in number inverse2)
+  ACC_minPwr = Math.Abs(minPwr)
+  ACC_maxPwr = Math.Abs(maxPwr)
+  ACC_accelDist = accelDist
+  ACC_decelDist = decelDist
+  ACC_totalDist = totalDist
+  Inv1 = inverse1
+  Inv2 = inverse2
+  S_kp = kP
+  If minPwr < 0 Then
+    ACC_isNeg = 1
+  Else
+    ACC_isNeg = 0
+  EndIf
+EndFunction
+
+Function SyncAcc(in number e1, in number e2, out number p1Out, out number p2Out, out number done)
+  currEnc = (Math.Abs(e1) + Math.Abs(e2)) / 2
+  
+  If currEnc >= ACC_totalDist Then
+    done = 1
+  ElseIf currEnc > ACC_totalDist / 2 Then
+    If ACC_decelDist = 0 Then
+      pwr = ACC_maxPwr
+    Else
+      pwr = (ACC_maxPwr - ACC_minPwr) / Math.Power(ACC_decelDist, 2) * Math.Power(currEnc - ACC_totalDist, 2) + ACC_minPwr
+    EndIf
+    done = 0
+  Else
+    If ACC_accelDist = 0 Then
+      pwr = ACC_maxPwr
+    Else
+      pwr = (ACC_maxPwr - ACC_minPwr) / Math.Power(ACC_accelDist, 2) * Math.Power(currEnc - 0, 2) + ACC_minPwr
+    EndIf
+    done = 0
+  EndIf
+  
+  If pwr < ACC_minPwr Then
+    pwr = ACC_minPwr
+  ElseIf pwr > ACC_maxPwr Then
+    pwr = ACC_maxPwr
+  EndIf
+  
+  If ACC_isNeg = 1 Then
+    pwrOut = 0 - pwr
+  Else
+    pwrOut = pwr
+  EndIf
+  
+  U = ((pwrOut * e1) - (pwrOut * e2)) * S_kp
+  p1 = pwrOut - (Math.Abs(pwr + 1) - Math.Abs(pwr)) * U
+  p2 = pwrOut + (Math.Abs(pwr + 1) - Math.Abs(pwr)) * U
+  
+  if Inv1 = 1 Then
+    p1 = 0 - p1
+  EndIf
+  if Inv2 = 2 Then
+    p2 = 0 - p2
+  EndIf
+  
+  p1Out = p1
+  p2Out = p2
+EndFunction
+
+Function TurnConfig(in number dWheel,in number dWidth)
+  grad = dWheel/dWidth*360
+EndFunction
+
+Function Turn(in number degree, out number wheelDegree)
+  wheelDegree = grad * degree
+EndFunction
